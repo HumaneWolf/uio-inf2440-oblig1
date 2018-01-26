@@ -2,7 +2,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Random;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class PartialInsertSort {
 
@@ -94,7 +93,7 @@ public class PartialInsertSort {
             int stop = k + segmentSize * (i + 1);
             stop = (i == (cores - 1)) ? n : stop;
 
-            largerNums.add(i, new LinkedList<Integer>());
+            largerNums.add(i, new LinkedList<>());
 
             threads[i] = new Thread(new Worker(nums, largerNums.get(i), start, stop));
             threads[i].start();
