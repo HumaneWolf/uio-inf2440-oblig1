@@ -45,7 +45,14 @@ public class PartialInsertSort {
         int[] seqNums = nums.clone();
         int[] parNums = nums.clone();
         int[] sortedNums = nums.clone();
+
+        // Do and time sequential version.
+        System.out.println("Starting arrays.sort");
+        startTime = System.nanoTime();
         Arrays.sort(sortedNums);
+        endTime = System.nanoTime();
+        double asTime = (endTime - startTime) / 1000000.0;
+        System.out.println("Arrays.sort time: " + asTime + "ms.");
 
         // Do and time sequential version.
         System.out.println("Starting sequential");
@@ -58,18 +65,18 @@ public class PartialInsertSort {
         System.out.println("Check finished.");
 
         // Do and time parallell version.
-        System.out.println("Starting Parallell");
+        System.out.println("Starting Parallel");
         startTime = System.nanoTime();
         par(parNums);
         endTime = System.nanoTime();
         double parTime = (endTime - startTime) / 1000000.0;
-        System.out.println("Parallell time: " + parTime + "ms. Checking for mismatches..");
+        System.out.println("Parallel time: " + parTime + "ms. Checking for mismatches..");
         checkSorting(parNums, sortedNums, 0, k);
         System.out.println("Check finished.");
     }
 
     /**
-     * Perform a parallellized sorting of the k highest elements in nums.
+     * Perform a parallelized sorting of the k highest elements in nums.
      * @param nums The array to look at.
      */
     public void par(int[] nums) {
