@@ -1,11 +1,11 @@
-import javax.xml.stream.events.StartDocument;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class PartialInsertSort {
 
-    static int n;
-    static int k;
+    private static int n;
+    private static int k;
 
     /**
      * Main. Ofc.
@@ -24,13 +24,13 @@ public class PartialInsertSort {
             return;
         }
 
-        PartialInsertSort pi = new PartialInsertSort();
+        new PartialInsertSort();
     }
 
     /**
      * Create a PartialInsertSort object and perform the sorting timings and tests.
      */
-    public PartialInsertSort() {
+    private PartialInsertSort() {
         Random rng = new Random();
         int[] nums = new int[n];
         long startTime;
@@ -79,15 +79,83 @@ public class PartialInsertSort {
      * Perform a parallelized sorting of the k highest elements in nums.
      * @param nums The array to look at.
      */
-    public void par(int[] nums) {
-        seq(nums);
+    private void par(int[] nums) {
+        insertSort(nums, 0, k - 1);
+        ConcurrentLinkedQueue<Integer> largerNums = new ConcurrentLinkedQueue<>();
+
+        int cores = Runtime.getRuntime().availableProcessors();
+        Thread[] threads = new Thread[cores];
+
+        int segmentSize = (nums.length - k) / threads.length;
+        for (int i = 0; i < cores; i++) {
+            int start = k + (segmentSize * i);
+            int stop = k + segmentSize * (i + 1);
+            stop = (i == (cores - 1)) ? n : stop;
+
+            threads[i] = new Thread(new Worker(nums, largerNums, start, stop));
+            threads[i].start();
+        }
+
+        for (Thread t : threads) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        int tempInt;
+        for (int i : largerNums) {
+            if (nums[i] > nums[k - 1]) {
+                tempInt = nums[i];
+                nums[i] = nums[k - 1];
+                nums[k - 1] = tempInt;
+                insertSortLast(nums, 0, k - 1);
+            }
+        }
+    }
+
+    /**
+     * Worker class for the parallel solution.
+     */
+    class Worker implements Runnable {
+        int[] nums;
+        ConcurrentLinkedQueue<Integer> largerNums;
+        int start;
+        int stop;
+
+        /**
+         * Constructor
+         * @param nums Numbers array to sort.
+         * @param largerNums Linked list to store the indexes of potentially larger numbers in.
+         * @param start Start index.
+         * @param stop Stop index.
+         */
+        Worker(int[] nums, ConcurrentLinkedQueue<Integer> largerNums, int start, int stop) {
+            this.nums = nums;
+            this.largerNums = largerNums;
+            this.start = start;
+            this.stop = stop;
+        }
+
+        /**
+         * Run the thing.
+         */
+        @Override
+        public void run() {
+            for (int i = start; i < stop; i++) {
+                if (nums[i] > nums[k - 1]) {
+                    largerNums.add(i);
+                }
+            }
+        }
     }
 
     /**
      * Perform a sequential sorting of the k highest elements in nums.
      * @param nums The array to look at.
      */
-    public void seq(int[] nums) {
+    private void seq(int[] nums) {
         insertSort(nums, 0, k - 1);
 
         int tempInt;
@@ -109,7 +177,7 @@ public class PartialInsertSort {
      * @param left The start key of the partial sorting range to check.
      * @param right The end key of the partial sorting range to check.
      */
-    void checkSorting(int[] a, int[] sorted, int left, int right) {
+    private void checkSorting(int[] a, int[] sorted, int left, int right) {
         for (int i = left; i < right; i++) {
             if (a[i] != sorted[sorted.length - 1 - i]) {
                 System.out.println("MISMATCH: " + a[i] + " and " + sorted[sorted.length - 1 - i] + " at " + i + ".");
@@ -124,7 +192,7 @@ public class PartialInsertSort {
      * @param venstre The start key to sort from.
      * @param hoyre The end key to sort until.
      */
-    void insertSort (int[] a, int venstre, int hoyre) {
+    private void insertSort (int[] a, int venstre, int hoyre) {
         int i, t;
         for (int k = venstre; k < hoyre; k++) {
             t = a[k + 1];
@@ -143,7 +211,7 @@ public class PartialInsertSort {
      * @param left The start index.
      * @param right The end index.
      */
-    void insertSortLast(int[] a, int left, int right) {
+    private void insertSortLast(int[] a, int left, int right) {
         int i = right - 1;
         int t = a[right];
         while (i >= left && a[i] < t) {
