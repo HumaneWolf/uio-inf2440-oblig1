@@ -1,4 +1,6 @@
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -81,9 +83,9 @@ public class PartialInsertSort {
      */
     private void par(int[] nums) {
         insertSort(nums, 0, k - 1);
-        ConcurrentLinkedQueue<Integer> largerNums = new ConcurrentLinkedQueue<>();
 
         int cores = Runtime.getRuntime().availableProcessors();
+        ArrayList<LinkedList<Integer>> largerNums = new ArrayList<LinkedList<Integer>>(cores);
         Thread[] threads = new Thread[cores];
 
         int segmentSize = (nums.length - k) / threads.length;
@@ -92,7 +94,9 @@ public class PartialInsertSort {
             int stop = k + segmentSize * (i + 1);
             stop = (i == (cores - 1)) ? n : stop;
 
-            threads[i] = new Thread(new Worker(nums, largerNums, start, stop));
+            largerNums.add(i, new LinkedList<Integer>());
+
+            threads[i] = new Thread(new Worker(nums, largerNums.get(i), start, stop));
             threads[i].start();
         }
 
@@ -105,12 +109,14 @@ public class PartialInsertSort {
         }
 
         int tempInt;
-        for (int i : largerNums) {
-            if (nums[i] > nums[k - 1]) {
-                tempInt = nums[i];
-                nums[i] = nums[k - 1];
-                nums[k - 1] = tempInt;
-                insertSortLast(nums, 0, k - 1);
+        for (LinkedList<Integer> l : largerNums) {
+            for (int i : l) {
+                if (nums[i] > nums[k - 1]) {
+                    tempInt = nums[i];
+                    nums[i] = nums[k - 1];
+                    nums[k - 1] = tempInt;
+                    insertSortLast(nums, 0, k - 1);
+                }
             }
         }
     }
@@ -120,7 +126,7 @@ public class PartialInsertSort {
      */
     class Worker implements Runnable {
         int[] nums;
-        ConcurrentLinkedQueue<Integer> largerNums;
+        LinkedList<Integer> largerNums;
         int start;
         int stop;
 
@@ -131,7 +137,7 @@ public class PartialInsertSort {
          * @param start Start index.
          * @param stop Stop index.
          */
-        Worker(int[] nums, ConcurrentLinkedQueue<Integer> largerNums, int start, int stop) {
+        Worker(int[] nums, LinkedList<Integer> largerNums, int start, int stop) {
             this.nums = nums;
             this.largerNums = largerNums;
             this.start = start;
