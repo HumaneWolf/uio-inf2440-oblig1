@@ -4,8 +4,8 @@ import java.util.Random;
 
 public class PartialInsertSort {
 
-    static int n = 1000;
-    static int k = 150;
+    static int n;
+    static int k;
 
     /**
      * Main. Ofc.
@@ -38,7 +38,7 @@ public class PartialInsertSort {
 
         // Generate numbers
         for (int i = 0; i < n; i++) {
-            nums[i] = rng.nextInt(n * 5);
+            nums[i] = rng.nextInt(n);
         }
 
         // Make copies of the array to ensure they are sorting the same numbers, for better timing.
@@ -97,7 +97,7 @@ public class PartialInsertSort {
                 nums[i] = nums[k - 1];
                 nums[k - 1] = tempInt;
 
-                insertSort(nums, 0, k - 1);
+                insertSortLast(nums, 0, k - 1);
             }
         }
     }
@@ -135,5 +135,21 @@ public class PartialInsertSort {
             }
             a[i + 1] = t;
         }
+    }
+
+    /**
+     * A simple "insertsort" algorithm that only sorts the last number to the right space without checking the others.
+     * @param a The array to sort.
+     * @param left The start index.
+     * @param right The end index.
+     */
+    void insertSortLast(int[] a, int left, int right) {
+        int i = right - 1;
+        int t = a[right];
+        while (i >= left && a[i] < t) {
+            a[i + 1] = a[i];
+            i--;
+        }
+        a[i + 1] = t;
     }
 }
