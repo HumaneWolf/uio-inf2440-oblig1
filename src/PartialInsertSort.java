@@ -21,15 +21,18 @@ public class PartialInsertSort {
     public static void main(String[] args) {
         // Check input
         if (args.length != 2) {
-            System.out.println("Use: java PartialInsertSort n(number of values) k(size of portion to sort)");
+            System.out.println("Use: java PartialInsertSort N(number of values) K(size of portion to sort)");
             return;
         }
         try {
             n = Integer.parseInt(args[0]);
             k = Integer.parseInt(args[1]);
         } catch (NumberFormatException e) {
-            System.out.println("n and k have to be valid integers.");
+            System.out.println("N and K have to be valid integers.");
             return;
+        }
+        if (n < k) {
+            System.out.println("K must be equal to or greater than K.");
         }
 
         // Run
