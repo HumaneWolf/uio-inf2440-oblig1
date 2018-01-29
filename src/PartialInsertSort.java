@@ -1,22 +1,25 @@
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.Random;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.Random;
 
 public class PartialInsertSort {
 
     private static int n;
     private static int k;
 
+    private static int runs = 7;
+    private static int medianIndex = 4;
+    private static double[] arrTiming = new double[runs];
+    private static double[] seqTiming = new double[runs];
+    private static double[] parTiming = new double[runs];
+
     /**
      * Main. Ofc.
      * @param args Cmd/terminal args.
      */
     public static void main(String[] args) {
+        // Check input
         if (args.length != 2) {
             System.out.println("Use: java PartialInsertSort n(number of values) k(size of portion to sort)");
             return;
@@ -29,13 +32,42 @@ public class PartialInsertSort {
             return;
         }
 
-        new PartialInsertSort();
+        // Run
+        for (int i = 0; i < runs; i++) {
+            System.out.println("\nSTARTING RUN " + i + ":");
+            new PartialInsertSort(i);
+        }
+
+        System.out.println("\nSTARTING TIMING CALCULATIONS:");
+
+        Arrays.sort(arrTiming);
+        Arrays.sort(seqTiming);
+        Arrays.sort(parTiming);
+
+        System.out.printf(
+                "Arrays.sort median : %.3f\n",
+                arrTiming[medianIndex]
+        );
+        System.out.printf(
+                "Sequential median  : %.3f    Speedup from arrays.sort: %.3f\n",
+                seqTiming[medianIndex],
+                (arrTiming[medianIndex] / seqTiming[medianIndex])
+        );
+        System.out.printf(
+                "Parallel median    : %.3f    Speedup from arrays.sort: %.3f" +
+                        "    Speedup from sequential: %.3f\n",
+                parTiming[medianIndex],
+                (arrTiming[medianIndex] / parTiming[medianIndex]),
+                (seqTiming[medianIndex] / parTiming[medianIndex])
+        );
+
     }
 
     /**
      * Create a PartialInsertSort object and perform the sorting timings and tests.
+     * @param runNum The run count, used to store timings.
      */
-    private PartialInsertSort() {
+    private PartialInsertSort(int runNum) {
         Random rng = new Random();
         int[] nums = new int[n];
         long startTime;
@@ -54,26 +86,24 @@ public class PartialInsertSort {
         System.out.println("Starting arrays.sort");
         startTime = System.nanoTime();
         Arrays.sort(sortedNums);
-        double asTime = (System.nanoTime() - startTime) / 1000000.0;
-        System.out.println("Arrays.sort time: " + asTime + "ms.");
+        arrTiming[runNum] = (System.nanoTime() - startTime) / 1000000.0;
+        System.out.println("Arrays.sort time: " + arrTiming[runNum] + "ms.");
 
         // Do and time sequential version.
         System.out.println("Starting sequential");
         startTime = System.nanoTime();
         seq(seqNums);
-        double seqTime = (System.nanoTime() - startTime) / 1000000.0;
-        System.out.println("Sequential time: " + seqTime + "ms. Checking for mismatches..");
+        seqTiming[runNum] = (System.nanoTime() - startTime) / 1000000.0;
+        System.out.println("Sequential time: " + seqTiming[runNum] + "ms. Checking for mismatches..");
         checkSorting(seqNums, sortedNums, 0, k);
-        System.out.println("Check finished.");
 
         // Do and time parallell version.
         System.out.println("Starting Parallel");
         startTime = System.nanoTime();
         par(parNums);
-        double parTime = (System.nanoTime() - startTime) / 1000000.0;
-        System.out.println("Parallel time: " + parTime + "ms. Checking for mismatches..");
+        parTiming[runNum] = (System.nanoTime() - startTime) / 1000000.0;
+        System.out.println("Parallel time: " + parTiming[runNum] + "ms. Checking for mismatches..");
         checkSorting(parNums, sortedNums, 0, k);
-        System.out.println("Check finished.");
     }
 
     /**
