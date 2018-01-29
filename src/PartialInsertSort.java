@@ -33,6 +33,7 @@ public class PartialInsertSort {
         }
         if (n < k) {
             System.out.println("K must be equal to or greater than K.");
+            return;
         }
 
         // Run
