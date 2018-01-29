@@ -2,6 +2,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.Random;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class PartialInsertSort {
 
@@ -35,7 +39,6 @@ public class PartialInsertSort {
         Random rng = new Random();
         int[] nums = new int[n];
         long startTime;
-        long endTime;
 
         // Generate numbers
         for (int i = 0; i < n; i++) {
@@ -51,16 +54,14 @@ public class PartialInsertSort {
         System.out.println("Starting arrays.sort");
         startTime = System.nanoTime();
         Arrays.sort(sortedNums);
-        endTime = System.nanoTime();
-        double asTime = (endTime - startTime) / 1000000.0;
+        double asTime = (System.nanoTime() - startTime) / 1000000.0;
         System.out.println("Arrays.sort time: " + asTime + "ms.");
 
         // Do and time sequential version.
         System.out.println("Starting sequential");
         startTime = System.nanoTime();
         seq(seqNums);
-        endTime = System.nanoTime();
-        double seqTime = (endTime - startTime) / 1000000.0;
+        double seqTime = (System.nanoTime() - startTime) / 1000000.0;
         System.out.println("Sequential time: " + seqTime + "ms. Checking for mismatches..");
         checkSorting(seqNums, sortedNums, 0, k);
         System.out.println("Check finished.");
@@ -69,8 +70,7 @@ public class PartialInsertSort {
         System.out.println("Starting Parallel");
         startTime = System.nanoTime();
         par(parNums);
-        endTime = System.nanoTime();
-        double parTime = (endTime - startTime) / 1000000.0;
+        double parTime = (System.nanoTime() - startTime) / 1000000.0;
         System.out.println("Parallel time: " + parTime + "ms. Checking for mismatches..");
         checkSorting(parNums, sortedNums, 0, k);
         System.out.println("Check finished.");
@@ -84,8 +84,8 @@ public class PartialInsertSort {
         insertSort(nums, 0, k - 1);
 
         int cores = Runtime.getRuntime().availableProcessors();
-        ArrayList<LinkedList<Integer>> largerNums = new ArrayList<LinkedList<Integer>>(cores);
         Thread[] threads = new Thread[cores];
+        Lock lock = new ReentrantLock();
 
         int segmentSize = (nums.length - k) / threads.length;
         for (int i = 0; i < cores; i++) {
@@ -93,9 +93,7 @@ public class PartialInsertSort {
             int stop = k + segmentSize * (i + 1);
             stop = (i == (cores - 1)) ? n : stop;
 
-            largerNums.add(i, new LinkedList<>());
-
-            threads[i] = new Thread(new Worker(nums, largerNums.get(i), start, stop));
+            threads[i] = new Thread(new Worker(nums, start, stop, lock));
             threads[i].start();
         }
 
@@ -106,18 +104,6 @@ public class PartialInsertSort {
                 e.printStackTrace();
             }
         }
-
-        int tempInt;
-        for (LinkedList<Integer> l : largerNums) {
-            for (int i : l) {
-                if (nums[i] > nums[k - 1]) {
-                    tempInt = nums[i];
-                    nums[i] = nums[k - 1];
-                    nums[k - 1] = tempInt;
-                    insertSortLast(nums, 0, k - 1);
-                }
-            }
-        }
     }
 
     /**
@@ -125,22 +111,22 @@ public class PartialInsertSort {
      */
     class Worker implements Runnable {
         int[] nums;
-        LinkedList<Integer> largerNums;
         int start;
         int stop;
+        Lock lock;
 
         /**
          * Constructor
          * @param nums Numbers array to sort.
-         * @param largerNums Linked list to store the indexes of potentially larger numbers in.
          * @param start Start index.
          * @param stop Stop index.
+         * @param lock A Lock object for nums.
          */
-        Worker(int[] nums, LinkedList<Integer> largerNums, int start, int stop) {
+        Worker(int[] nums, int start, int stop, Lock lock) {
             this.nums = nums;
-            this.largerNums = largerNums;
             this.start = start;
             this.stop = stop;
+            this.lock = lock;
         }
 
         /**
@@ -148,9 +134,21 @@ public class PartialInsertSort {
          */
         @Override
         public void run() {
+            int tempInt;
             for (int i = start; i < stop; i++) {
                 if (nums[i] > nums[k - 1]) {
-                    largerNums.add(i);
+                    try {
+                        lock.lock();
+                        if (nums[k - 1] < nums[i]) {
+                            tempInt = nums[i];
+                            nums[i] = nums[k - 1];
+                            nums[k - 1] = tempInt;
+
+                            insertSortLast(nums, 0, k - 1);
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
                 }
             }
         }
