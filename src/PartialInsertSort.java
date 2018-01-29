@@ -61,6 +61,8 @@ public class PartialInsertSort {
                 (seqTiming[medianIndex] / parTiming[medianIndex])
         );
 
+        System.out.println("\nN: " + n + "\tK: " + k);
+
     }
 
     /**
