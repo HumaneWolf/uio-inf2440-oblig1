@@ -44,21 +44,11 @@ public class PartialInsertSort {
         Arrays.sort(seqTiming);
         Arrays.sort(parTiming);
 
+        System.out.printf("Arrays.sort median : %.3f\n", arrTiming[medianIndex]);
+        System.out.printf("Sequential median  : %.3f\n", seqTiming[medianIndex]);
         System.out.printf(
-                "Arrays.sort median : %.3f\n",
-                arrTiming[medianIndex]
-        );
-        System.out.printf(
-                "Sequential median  : %.3f    Speedup from arrays.sort: %.3f\n",
-                seqTiming[medianIndex],
-                (arrTiming[medianIndex] / seqTiming[medianIndex])
-        );
-        System.out.printf(
-                "Parallel median    : %.3f    Speedup from arrays.sort: %.3f" +
-                        "    Speedup from sequential: %.3f\n",
-                parTiming[medianIndex],
-                (arrTiming[medianIndex] / parTiming[medianIndex]),
-                (seqTiming[medianIndex] / parTiming[medianIndex])
+                "Parallel median    : %.3f    Speedup from sequential: %.3f\n",
+                parTiming[medianIndex], (seqTiming[medianIndex] / parTiming[medianIndex])
         );
 
         System.out.println("\nN: " + n + "\tK: " + k);
