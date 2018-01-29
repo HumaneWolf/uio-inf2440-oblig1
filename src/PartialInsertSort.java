@@ -38,7 +38,7 @@ public class PartialInsertSort {
             new PartialInsertSort(i);
         }
 
-        System.out.println("\nSTARTING TIMING CALCULATIONS:");
+        System.out.println("\nTIMING CALCULATIONS:");
 
         Arrays.sort(arrTiming);
         Arrays.sort(seqTiming);
