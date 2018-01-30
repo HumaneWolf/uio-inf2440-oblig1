@@ -167,6 +167,8 @@ public class PartialInsertSort {
                 if (lock.isLocked()) {
                     i--;
                     continue; // Loop again on the same number until no longer locked.
+                    // A blocking operation like lock.lock() but that does not acquire the lock
+                    // would be ideal.
                 }
 
                 if (nums[k - 1] < nums[i]) {
