@@ -111,7 +111,7 @@ public class PartialInsertSort {
 
         int cores = Runtime.getRuntime().availableProcessors();
         Thread[] threads = new Thread[cores];
-        Lock lock = new ReentrantLock();
+        ReentrantLock lock = new ReentrantLock();
 
         int segmentSize = (nums.length - k) / threads.length;
         for (int i = 0; i < cores; i++) {
@@ -139,7 +139,7 @@ public class PartialInsertSort {
         int[] nums;
         int start;
         int stop;
-        Lock lock;
+        ReentrantLock lock;
 
         /**
          * Constructor
@@ -148,7 +148,7 @@ public class PartialInsertSort {
          * @param stop Stop index.
          * @param lock A Lock object for nums.
          */
-        Worker(int[] nums, int start, int stop, Lock lock) {
+        Worker(int[] nums, int start, int stop, ReentrantLock lock) {
             this.nums = nums;
             this.start = start;
             this.stop = stop;
@@ -162,10 +162,18 @@ public class PartialInsertSort {
         public void run() {
             int tempInt;
             for (int i = start; i < stop; i++) {
+                // In case it is locked by another thread, wait with checking at all to avoid errors.
+                // Could have locked more, but it would slow down the program a lot.
+                if (lock.isLocked()) {
+                    i--;
+                    continue; // Loop again on the same number until no longer locked.
+                }
+
                 if (nums[k - 1] < nums[i]) {
                     try {
                         lock.lock();
-                        if (nums[k - 1] < nums[i]) { // Compare twice, since the first is not synced.
+                        // Compare twice, since the first comparison is not synced.
+                        if (nums[k - 1] < nums[i]) {
                             tempInt = nums[i];
                             nums[i] = nums[k - 1];
                             nums[k - 1] = tempInt;
