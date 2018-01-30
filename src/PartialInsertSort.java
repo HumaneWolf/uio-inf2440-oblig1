@@ -162,10 +162,10 @@ public class PartialInsertSort {
         public void run() {
             int tempInt;
             for (int i = start; i < stop; i++) {
-                if (nums[i] > nums[k - 1]) {
+                if (nums[k - 1] < nums[i]) {
                     try {
                         lock.lock();
-                        if (nums[k - 1] < nums[i]) {
+                        if (nums[k - 1] < nums[i]) { // Compare twice, since the first is not synced.
                             tempInt = nums[i];
                             nums[i] = nums[k - 1];
                             nums[k - 1] = tempInt;
