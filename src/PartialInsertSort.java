@@ -168,7 +168,6 @@ public class PartialInsertSort {
          */
         @Override
         public void run() {
-            insertSort(nums, start, start + k - 1);
             sortSegment(nums, start, stop);
 
             // Sync
@@ -213,11 +212,12 @@ public class PartialInsertSort {
      * @param nums The array to look at.
      */
     private void seq(int[] nums) {
-        insertSort(nums, 0, k - 1);
         sortSegment(nums, 0, nums.length);
     }
 
     private void sortSegment(int[] nums, int start, int stop) {
+        insertSort(nums, start, start + k - 1);
+
         int tempInt;
         for (int i = start + k; i < stop; i++) {
             if (nums[start + k - 1] < nums[i]) {
@@ -225,7 +225,7 @@ public class PartialInsertSort {
                 nums[i] = nums[start + k - 1];
                 nums[start + k - 1] = tempInt;
 
-                insertSortLast(nums, 0, start + k - 1);
+                insertSortLast(nums, start, start + k - 1);
             }
         }
     }
