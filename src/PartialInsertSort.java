@@ -1,8 +1,6 @@
 import java.util.Arrays;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.Random;
 
 public class PartialInsertSort {
@@ -10,13 +8,12 @@ public class PartialInsertSort {
     private static int n;
     private static int k;
 
-    private static int runs = 7;
-    private static int medianIndex = 4;
+    private static final int runs = 7;
+    private static final int medianIndex = 4;
     private static double[] arrTiming = new double[runs];
     private static double[] seqTiming = new double[runs];
     private static double[] parTiming = new double[runs];
 
-    private int[][] largestNums;
     private Thread[] threads;
 
     /**
@@ -98,7 +95,7 @@ public class PartialInsertSort {
         System.out.println("Sequential time: " + seqTiming[runNum] + "ms. Checking for mismatches..");
         checkSorting(seqNums, sortedNums, 0, k);
 
-        // Do and time parallell version.
+        // Do and time parallel version.
         System.out.println("Starting Parallel");
         startTime = System.nanoTime();
         par(parNums);
@@ -112,23 +109,28 @@ public class PartialInsertSort {
      * @param nums The array to look at.
      */
     private void par(int[] nums) {
-        insertSort(nums, 0, k - 1);
-
         int cores = Runtime.getRuntime().availableProcessors();
         threads = new Thread[cores];
-        largestNums = new int[threads.length][k];
         CyclicBarrier cb = new CyclicBarrier(threads.length + 1);
 
-        int segmentSize = (nums.length - k) / threads.length;
+        int segmentSize = nums.length / threads.length;
         for (int i = 0; i < cores; i++) {
-            int start = k + (segmentSize * i);
-            int stop = k + segmentSize * (i + 1);
+            int start = segmentSize * i;
+            int stop = segmentSize * (i + 1);
             stop = (i == (cores - 1)) ? n : stop;
 
             threads[i] = new Thread(new Worker(i, nums, start, stop, cb));
             threads[i].start();
         }
 
+        // For sync
+        try {
+            cb.await();
+        } catch (InterruptedException | BrokenBarrierException e) {
+            e.printStackTrace();
+        }
+
+        // For result
         try {
             cb.await();
         } catch (InterruptedException | BrokenBarrierException e) {
@@ -166,44 +168,42 @@ public class PartialInsertSort {
          */
         @Override
         public void run() {
-            int largestThisRun;
-            boolean cont;
-            for (int i = 0; i < k; i++) {
-                largestThisRun = 0;
-                for (int j = start; j < stop; j++) {
-                    cont = true;
-                    for (int k : largestNums[id]) {
-                        if (k == j) {
-                            cont = false;
-                        }
-                    }
-                    if (nums[j] > nums[largestThisRun] && cont) {
-                        largestThisRun = j;
-                    }
-                }
+            insertSort(nums, start, start + k - 1);
+            sortSegment(nums, start, stop);
 
-                largestNums[id][i] = largestThisRun;
-            }
-
+            // Sync
             try {
                 cb.await();
             } catch (InterruptedException | BrokenBarrierException e) {
                 e.printStackTrace();
             }
 
+            // Gather results
             if (id == 0) {
                 int tempInt;
-                for (int i = 0; i < threads.length; i++) {
-                    for (int j : largestNums[i]) {
-                        if (nums[j] > nums[k - 1]) {
-                            tempInt = nums[j];
-                            nums[j] = nums[k - 1];
+                int segmentSize = nums.length / threads.length;
+                for (int i = 1; i < threads.length; i++) {
+                    int threadStart = segmentSize * i;
+
+                    for (int j = 0; j < k; j++) {
+                        if (nums[threadStart + j] > nums[k - 1]) {
+                            tempInt = nums[threadStart + j];
+                            nums[threadStart + j] = nums[k - 1];
                             nums[k - 1] = tempInt;
 
                             insertSortLast(nums, 0, k - 1);
+                        } else {
+                            break;
                         }
                     }
                 }
+            }
+
+            // Finish
+            try {
+                cb.await();
+            } catch (InterruptedException | BrokenBarrierException e) {
+                e.printStackTrace();
             }
         }
     }
@@ -213,12 +213,11 @@ public class PartialInsertSort {
      * @param nums The array to look at.
      */
     private void seq(int[] nums) {
+        insertSort(nums, 0, k - 1);
         sortSegment(nums, 0, nums.length);
     }
 
     private void sortSegment(int[] nums, int start, int stop) {
-        insertSort(nums, start, start + k - 1);
-
         int tempInt;
         for (int i = start + k; i < stop; i++) {
             if (nums[start + k - 1] < nums[i]) {
