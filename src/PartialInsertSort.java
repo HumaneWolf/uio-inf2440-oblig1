@@ -1,4 +1,6 @@
 import java.util.Arrays;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.Random;
@@ -13,6 +15,9 @@ public class PartialInsertSort {
     private static double[] arrTiming = new double[runs];
     private static double[] seqTiming = new double[runs];
     private static double[] parTiming = new double[runs];
+
+    private int[][] largestNums;
+    private Thread[] threads;
 
     /**
      * Main. Ofc.
@@ -110,8 +115,9 @@ public class PartialInsertSort {
         insertSort(nums, 0, k - 1);
 
         int cores = Runtime.getRuntime().availableProcessors();
-        Thread[] threads = new Thread[cores];
-        ReentrantLock lock = new ReentrantLock();
+        threads = new Thread[cores];
+        largestNums = new int[threads.length][k];
+        CyclicBarrier cb = new CyclicBarrier(threads.length + 1);
 
         int segmentSize = (nums.length - k) / threads.length;
         for (int i = 0; i < cores; i++) {
@@ -119,16 +125,14 @@ public class PartialInsertSort {
             int stop = k + segmentSize * (i + 1);
             stop = (i == (cores - 1)) ? n : stop;
 
-            threads[i] = new Thread(new Worker(nums, start, stop, lock));
+            threads[i] = new Thread(new Worker(i, nums, start, stop, cb));
             threads[i].start();
         }
 
-        for (Thread t : threads) {
-            try {
-                t.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        try {
+            cb.await();
+        } catch (InterruptedException | BrokenBarrierException e) {
+            e.printStackTrace();
         }
     }
 
@@ -136,23 +140,25 @@ public class PartialInsertSort {
      * Worker class for the parallel solution.
      */
     class Worker implements Runnable {
+        int id;
         int[] nums;
         int start;
         int stop;
-        ReentrantLock lock;
+        CyclicBarrier cb;
 
         /**
          * Constructor
          * @param nums Numbers array to sort.
          * @param start Start index.
          * @param stop Stop index.
-         * @param lock A Lock object for nums.
+         * @param cb A CyclicBarrier object.
          */
-        Worker(int[] nums, int start, int stop, ReentrantLock lock) {
+        Worker(int id, int[] nums, int start, int stop, CyclicBarrier cb) {
+            this.id = id;
             this.nums = nums;
             this.start = start;
             this.stop = stop;
-            this.lock = lock;
+            this.cb = cb;
         }
 
         /**
@@ -160,30 +166,42 @@ public class PartialInsertSort {
          */
         @Override
         public void run() {
-            int tempInt;
-            for (int i = start; i < stop; i++) {
-                // In case it is locked by another thread, wait with checking at all to avoid errors.
-                // Could have locked more, but it would slow down the program a lot.
-                if (lock.isLocked()) {
-                    i--;
-                    continue; // Loop again on the same number until no longer locked.
-                    // A blocking operation like lock.lock() but that does not acquire the lock
-                    // would be ideal.
+            int largestThisRun;
+            boolean cont;
+            for (int i = 0; i < k; i++) {
+                largestThisRun = 0;
+                for (int j = start; j < stop; j++) {
+                    cont = true;
+                    for (int k : largestNums[id]) {
+                        if (k == j) {
+                            cont = false;
+                        }
+                    }
+                    if (nums[j] > nums[largestThisRun] && cont) {
+                        largestThisRun = j;
+                    }
                 }
 
-                if (nums[k - 1] < nums[i]) {
-                    try {
-                        lock.lock();
-                        // Compare twice, since the first comparison is not synced.
-                        if (nums[k - 1] < nums[i]) {
-                            tempInt = nums[i];
-                            nums[i] = nums[k - 1];
+                largestNums[id][i] = largestThisRun;
+            }
+
+            try {
+                cb.await();
+            } catch (InterruptedException | BrokenBarrierException e) {
+                e.printStackTrace();
+            }
+
+            if (id == 0) {
+                int tempInt;
+                for (int i = 0; i < threads.length; i++) {
+                    for (int j : largestNums[i]) {
+                        if (nums[j] > nums[k - 1]) {
+                            tempInt = nums[j];
+                            nums[j] = nums[k - 1];
                             nums[k - 1] = tempInt;
 
                             insertSortLast(nums, 0, k - 1);
                         }
-                    } finally {
-                        lock.unlock();
                     }
                 }
             }
@@ -195,16 +213,20 @@ public class PartialInsertSort {
      * @param nums The array to look at.
      */
     private void seq(int[] nums) {
-        insertSort(nums, 0, k - 1);
+        sortSegment(nums, 0, nums.length);
+    }
+
+    private void sortSegment(int[] nums, int start, int stop) {
+        insertSort(nums, start, start + k - 1);
 
         int tempInt;
-        for (int i = k; i < nums.length; i++) {
-            if (nums[k - 1] < nums[i]) {
+        for (int i = start + k; i < stop; i++) {
+            if (nums[start + k - 1] < nums[i]) {
                 tempInt = nums[i];
-                nums[i] = nums[k - 1];
-                nums[k - 1] = tempInt;
+                nums[i] = nums[start + k - 1];
+                nums[start + k - 1] = tempInt;
 
-                insertSortLast(nums, 0, k - 1);
+                insertSortLast(nums, 0, start + k - 1);
             }
         }
     }
